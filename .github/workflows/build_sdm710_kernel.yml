@@ -1,7 +1,5 @@
 name: Build RMX1901-Kernel
 
-on: [push, pull_request, workflow_dispatch]
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -55,17 +53,23 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
 
-        # LLVM + LTO Flags
+        # Disable LTO and use GNU Assembler for early boot stability on modern LLVM
         export LLVM=1
-        export LLVM_IAS=1
+        export LLVM_IAS=0
         export LD=ld.lld
-        export KBUILD_LTO_CLANG=1
+        export KBUILD_LTO_CLANG=0
 
         # Extra flags to suppress driver warnings during compilation
         EXTRA_ARGS="HOSTCFLAGS=-Wno-unused-command-line-argument KCFLAGS=-Wno-unused-command-line-argument"
 
         # 1st: defconfig
         make $KERNEL_CMDLINE $KERNEL_DEFCONFIG CC="ccache clang" $EXTRA_ARGS
+
+        # Disable LTO inside generated .config just in case defconfig force-enables it
+        scripts/config --file out/.config --disable LTO
+        scripts/config --file out/.config --disable LTO_CLANG
+        scripts/config --file out/.config --disable THINLTO
+        scripts/config --file out/.config --enable LTO_NONE
 
         # Kernel version
         VERSION=$(make kernelversion)
