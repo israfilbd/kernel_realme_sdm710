@@ -30,11 +30,13 @@ jobs:
       run: |
         sudo timedatectl set-timezone Asia/Dhaka
         sudo apt-get update -y
-        sudo apt install binutils make python3 libssl-dev build-essential bc bison flex zip unzip xz-utils mkbootimg cpio device-tree-compiler git git-lfs gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu -y
-        git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+        sudo apt install binutils make python3 libssl-dev build-essential bc bison flex zip unzip xz-utils mkbootimg cpio device-tree-compiler git git-lfs gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu curl -y
         
-        # Remove Proton-Clang's outdated host GNU linkers to prevent GLIBC .relr.dyn errors on Ubuntu 24.04
-        rm -f clang/bin/ld clang/bin/ld.bfd clang/bin/ld.gold
+        # Download and extract ZyC Clang 16 from GitHub Releases
+        curl -L -O https://github.com/ZyCromerZ/Clang/releases/download/Clang-16.0.6-20260807-release/Clang-16.0.6-20260807.tar.gz
+        mkdir clang
+        tar -xf Clang-16.0.6-*.tar.gz -C clang
+        rm -f Clang-16.0.6-*.tar.gz
         
         git clone https://github.com/ij-israfil/AnyKernel3 -b master --depth=1
         rm -rf AnyKernel3/.git AnyKernel3/.github
@@ -59,7 +61,7 @@ jobs:
         export LD=ld.lld
         export KBUILD_LTO_CLANG=1
 
-        # Extra flags to suppress driver warnings like '-fuse-ld=lld' during compilation
+        # Extra flags to suppress driver warnings during compilation
         EXTRA_ARGS="HOSTCFLAGS=-Wno-unused-command-line-argument KCFLAGS=-Wno-unused-command-line-argument"
 
         # 1st: defconfig
@@ -74,7 +76,7 @@ jobs:
 
         cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3
         
-        # Zip AnyKernel3 directory
+        # Package AnyKernel3 output as zip
         cd AnyKernel3
         zip -r9 "../RMX1901-Perf-Kernel-${VERSION}-${{ steps.get_time.outputs.TIME }}.zip" * -x .git README.md
         cd ..
@@ -82,6 +84,6 @@ jobs:
     - name: Upload to Release
       uses: softprops/action-gh-release@v3.0.3
       with:
-        tag_name: "RMX1901-${{ steps.build_kern.outputs.VERSION }}-${{ steps.get_time.outputs.TIME }}"
+        tag_name: "v${{ steps.build_kern.outputs.VERSION }}-${{ steps.get_time.outputs.TIME }}"
         name: "RMX1901 Kernel ${{ steps.build_kern.outputs.VERSION }} (${{ steps.get_time.outputs.TIME }})"
         files: RMX1901-Perf-Kernel-*.zip
